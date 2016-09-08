@@ -1,12 +1,16 @@
-#Leaflet.draw With Touch
-This is a touch friendly version of Leaflet.draw that was created and maintained by Michael Guild (https://github.com/michaelguild13).
 
-The touch support was initiated due to a demand for it at National Geographic for their Map Maker Projected (http://mapmaker.education.nationalgeographic.com/) that was created by Michael Guild and Daniel Schep (https://github.com/dschep)
+[![Build Status](https://travis-ci.org/Leaflet/Leaflet.draw.svg?branch=master)](https://travis-ci.org/Leaflet/Leaflet.draw)
+
+ Leaflet.draw: [![Join the chat at https://gitter.im/Leaflet/Leaflet.draw](https://badges.gitter.im/Leaflet/Leaflet.draw.svg)](https://gitter.im/Leaflet/Leaflet.draw?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
+ Leaflet: [![Gitter](https://badges.gitter.im/Leaflet/Leaflet.svg)](https://gitter.im/Leaflet/Leaflet?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 
 # Important
-Leaflet.draw 0.2.3+ requires [Leaflet 0.7](https://github.com/Leaflet/Leaflet/archive/v0.7.zip) or higher.
+Leaflet.draw 0.2.3+ requires [Leaflet 0.7.x](https://github.com/Leaflet/Leaflet/releases).
 
-#Leaflet.draw
+Support for Leaflet 1.0 is in development at the [leaflet-master](https://github.com/Leaflet/Leaflet.draw/tree/leaflet-master) branch.
+
+# Leaflet.draw
 Adds support for drawing and editing vectors and markers on [Leaflet maps](https://github.com/Leaflet/Leaflet). Check out the [demo](http://leaflet.github.com/Leaflet.draw/).
 
 #### Upgrading from Leaflet.draw 0.1
@@ -14,10 +18,16 @@ Adds support for drawing and editing vectors and markers on [Leaflet maps](https
 Leaflet.draw 0.2.0 changes a LOT of things from 0.1. Please see [BREAKING CHANGES](https://github.com/Leaflet/Leaflet.draw/blob/master/BREAKINGCHANGES.md) for how to upgrade.
 
 ## Table of Contents
+[Install](#install)  
 [Using the plugin](#using)  
 [Advanced Options](#options)  
 [Common tasks](#commontasks)  
 [Thanks](#thanks)
+
+<a name="install" />
+## Install
+
+To install the plugin run `npm install leaflet-draw` via command line in your project. You must also require this in your project like so: `var leaflet-draw = require('leaflet-draw');`
 
 <a name="using" />
 ## Using the plugin
@@ -62,7 +72,7 @@ var drawControl = new L.Control.Draw({
 map.addControl(drawControl);
 ````
 
-The key here is the `featureGroup` option. This tells the plugin which `FeatureGroup` contains the layers that should be editable.
+The key here is the `featureGroup` option. This tells the plugin which `FeatureGroup` contains the layers that should be editable.  The featureGroup can contain 0 or more features with geometry types `Point`, `LineString`, and `Polygon`.  **Leaflet.draw does not work with multigeometry features such as `MultiPoint`, `MultiLineString`, `MultiPolygon`, or `GeometryCollection`.**  If you need to add multigeometry features to the draw plugin, convert them to a FeatureCollection of non-multigeometries (`Point`s, `LineString`s, or `Polygon`s).
 
 ### Events
 
@@ -133,6 +143,14 @@ Triggered when the user has finished a particular vector or marker.
 | --- | --- | ---
 | layerType | String | The type of layer this is. One of: `polyline`, `polygon`, `rectangle`, `circle`, `marker`
 
+#### draw:drawvertex
+
+Triggered when a vertex is created on a polyline or polygon.
+
+| Property | Type | Description
+| --- | --- | ---
+| layers | [LayerGroup](http://leafletjs.com/reference.html#layergroup) | List of all layers just being added from the map.
+
 #### draw:editstart
 
 Triggered when the user starts edit mode by clicking the edit tool button.
@@ -140,6 +158,30 @@ Triggered when the user starts edit mode by clicking the edit tool button.
 | Property | Type | Description
 | --- | --- | ---
 | handler | String | The type of edit this is. One of: `edit`
+
+#### draw:editmove
+
+Triggered as the user moves a rectangle, circle or marker.
+
+| Property | Type | Description
+| --- | --- | ---
+| layer | [ILayer](http://leafletjs.com/reference.html#ilayer) | Layer that was just moved.
+
+#### draw:editresize
+
+Triggered as the user resizes a rectangle or circle.
+
+| Property | Type | Description
+| --- | --- | ---
+| layer | [ILayer](http://leafletjs.com/reference.html#ilayer) | Layer that was just moved.
+
+#### draw:editvertex
+
+Triggered when a vertex is edited on a polyline or polygon.
+
+| Property | Type | Description
+| --- | --- | ---
+| layers | [LayerGroup](http://leafletjs.com/reference.html#layergroup) | List of all layers just being edited from the map.
 
 #### draw:editstop
 
@@ -234,7 +276,7 @@ Polygon options include all of the Polyline options plus the option to show the 
 
 | Option | Type | Default | Description
 | --- | --- | --- | ---
-| shapeOptions | [Leaflet Path options](http://leafletjs.com/reference.html#path-options) | [See code](https://github.com/Leaflet/Leaflet.draw/blob/master/src/draw/handler/Draw.Circle.js#L7) | The options used when drawing the circle on the map. 
+| shapeOptions | [Leaflet Path options](http://leafletjs.com/reference.html#path-options) | [See code](https://github.com/Leaflet/Leaflet.draw/blob/master/src/draw/handler/Draw.Circle.js#L7) | The options used when drawing the circle on the map.
 | repeatMode | Bool | `false` | Determines if the draw tool remains enabled after drawing a shape.
 
 <a name="markeroptions" />
@@ -246,8 +288,8 @@ Polygon options include all of the Polyline options plus the option to show the 
 | zIndexOffset | Number | `2000` | This should be a high number to ensure that you can draw over all other layers on the map.
 | repeatMode | Bool | `false` | Determines if the draw tool remains enabled after drawing a shape.
 
-<a name="editoptions" />
-### EditOptions
+<a name="editpolyoptions" />
+### EditPolyOptions
 
 These options will allow you to configure the draw toolbar and its handlers.
 
@@ -256,6 +298,7 @@ These options will allow you to configure the draw toolbar and its handlers.
 | featureGroup | [Leaflet FeatureGroup](http://leafletjs.com/reference.html#featuregroup) | `null` | This is the FeatureGroup that stores all editable shapes. **THIS IS REQUIRED FOR THE EDIT TOOLBAR TO WORK**
 | edit | [EditHandlerOptions](#edithandleroptions) | `{ }` | Edit handler options. Set to `false` to disable handler.
 | remove | [DeleteHandlerOptions](#deletehandleroptions) | `{ }` | Delete handler options. Set to `false` to disable handler.
+| poly | [EditPolyOptions](#editpoly) |  `{ }` | Set polygon editing options
 
 <a name="edithandleroptions" />
 #### EditHandlerOptions
@@ -282,6 +325,15 @@ E.g. The edit options below will maintain the layer color and set the edit opaci
 
 | Option | Type | Default | Description
 | --- | --- | --- | ---
+
+
+<a name="editpoly" />
+#### EditPolyOptions
+
+| Option | Type | Default | Description
+| --- | --- | --- | ---
+| allowIntersection | Bool | `true` |  Determines if line segments can cross.
+
 
 <a name="drawlocal" />
 #### Customizing language and text in Leaflet.draw
@@ -377,7 +429,7 @@ map.on('draw:created', function (e) {
 		layer.bindPopup('A popup!');
 	}
 
-	drawnItems.addLayer(layer);
+	editableLayers.addLayer(layer);
 });
 ````
 
@@ -429,12 +481,27 @@ drawControl.setDrawingOptions({
 
 ### Creating a custom build
 
-If you only require certain handlers (and not the UI), you may wish to create a custom build. You can generate the relevant jake command using the [build html file](https://github.com/Leaflet/Leaflet.draw/blob/master/build/build.html). 
+If you only require certain handlers (and not the UI), you may wish to create a custom build. You can generate the relevant jake command using the [build html file](https://github.com/Leaflet/Leaflet.draw/blob/master/build/build.html).
 
 See [edit handlers example](https://github.com/Leaflet/Leaflet.draw/blob/master/examples/edithandlers.html) which uses only the edit handlers.
 
 <a name="thanks" />
+
+### Testing
+
+To test you can install the npm dependencies:
+
+    npm install
+
+and then use:
+
+    jake test
+
 ## Thanks
+
+Touch friendly version of Leaflet.draw was created and maintained by Michael Guild (https://github.com/michaelguild13).
+
+The touch support was initiated due to a demand for it at National Geographic for their Map Maker Projected (http://mapmaker.education.nationalgeographic.com/) that was created by Michael Guild and Daniel Schep (https://github.com/dschep)
 
 Thanks so much to [@brunob](https://github.com/brunob), [@tnightingale](https://github.com/tnightingale), and [@shramov](https://github.com/shramov). I got a lot of ideas from their Leaflet plugins.
 

@@ -1,6 +1,6 @@
 {
   "name": "leaflet-draw",
-  "version": "0.2.3",
+  "version": "0.3.2",
   "description": "Vector drawing plugin for Leaflet",
   "devDependencies": {
     "happen": "~0.1.3",
@@ -10,6 +10,7 @@
     "karma-coverage": "~0.1.3",
     "karma-mocha": "~0.1.0",
     "karma-phantomjs-launcher": "^0.1.4",
+    "phantomjs": "~2.1.3",
     "leaflet": "~0.7.0",
     "mocha": "~1.14.0",
     "uglify-js": "~2.4.3"
@@ -35,6 +36,12 @@
     "draw"
   ],
   "author": "Jacob Toye",
-  "license": "BSD",
+  "contributors": [
+    {
+      "name": "Jon West",
+      "email": "ddproxy@gmail.com"
+    }
+  ],
+  "license": "MIT",
   "readmeFilename": "README.md"
 }
