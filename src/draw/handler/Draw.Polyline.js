@@ -13,7 +13,7 @@ L.Draw.Polyline = L.Draw.Feature.extend({
 			timeout: 2500
 		},
 		icon: new L.DivIcon({
-			iconSize: new L.Point(8, 8),
+			iconSize: new L.Point(20, 20),
 			className: 'leaflet-div-icon leaflet-editing-icon'
 		}),
 		touchIcon: new L.DivIcon({
@@ -30,7 +30,8 @@ L.Draw.Polyline = L.Draw.Feature.extend({
 			fill: false,
 			clickable: true
 		},
-		metric: true, // Whether to use the metric meaurement system or imperial
+		metric: true, // Whether to use the metric measurement system or imperial
+		feet: true, // When not metric, to use feet instead of yards for display.
 		showLength: true, // Whether to display distance in the tooltip
 		zIndexOffset: 2000 // This should be > than the highest z-index any map layers
 	},
@@ -64,7 +65,7 @@ L.Draw.Polyline = L.Draw.Feature.extend({
 			this._map.addLayer(this._markerGroup);
 
 			this._poly = new L.Polyline([], this.options.shapeOptions);
-			
+
 			this._tooltip.updateContent(this._getTooltipText());
 
 			// Make a transparent marker that will used to catch click events. These click
@@ -84,15 +85,23 @@ L.Draw.Polyline = L.Draw.Feature.extend({
 				});
 			}
 
+			if (!L.Browser.touch) {
+				this._map.on('mouseup', this._onMouseUp, this); // Necessary for 0.7 compatibility
+			}
+
 			this._mouseMarker
 				.on('mousedown', this._onMouseDown, this)
+				.on('mouseout', this._onMouseOut, this)
+				.on('mouseup', this._onMouseUp, this) // Necessary for 0.8 compatibility
+				.on('mousemove', this._onMouseMove, this) // Necessary to prevent 0.8 stutter
 				.addTo(this._map);
 
 			this._map
+				.on('mouseup', this._onMouseUp, this) // Necessary for 0.7 compatibility
 				.on('mousemove', this._onMouseMove, this)
-				.on('mouseup', this._onMouseUp, this)
-				.on('zoomlevelschange', this._onZoomChange, this)
-				.on('click', this._onTouch, this);
+				.on('zoomlevelschange', this._onZoomEnd, this)
+				.on('click', this._onTouch, this)
+				.on('zoomend', this._onZoomEnd, this);
 		}
 	},
 
@@ -113,7 +122,9 @@ L.Draw.Polyline = L.Draw.Feature.extend({
 
 		this._mouseMarker
 			.off('mousedown', this._onMouseDown, this)
-			.off('mouseup', this._onMouseUp, this);
+			.off('mouseout', this._onMouseOut, this)
+			.off('mouseup', this._onMouseUp, this)
+			.off('mousemove', this._onMouseMove, this);
 		this._map.removeLayer(this._mouseMarker);
 		delete this._mouseMarker;
 
@@ -121,9 +132,10 @@ L.Draw.Polyline = L.Draw.Feature.extend({
 		this._clearGuides();
 
 		this._map
-			.off('mousemove', this._onMouseMove, this)
 			.off('mouseup', this._onMouseUp, this)
-			.off('zoomlevelschange', this._onZoomChange, this)
+			.off('mousemove', this._onMouseMove, this)
+			.off('zoomlevelschange', this._onZoomEnd, this)
+			.off('zoomend', this._onZoomEnd, this)
 			.off('click', this._onTouch, this);
 	},
 
@@ -181,7 +193,7 @@ L.Draw.Polyline = L.Draw.Feature.extend({
 	},
 
 	_finishShape: function () {
-		var intersects = this._poly.newLatLngIntersects(this._poly.getLatLngs()[0], true);
+		var intersects = this._poly.newLatLngIntersects(this._poly.getLatLngs()[this._poly.getLatLngs().length - 1]);
 
 		if ((!this.options.allowIntersection && intersects) || !this._shapeIsValid()) {
 			this._showErrorTooltip();
@@ -201,13 +213,15 @@ L.Draw.Polyline = L.Draw.Feature.extend({
 		return true;
 	},
 
-	_onZoomChange: function () {
-		this._updateGuide();
+	_onZoomEnd: function () {
+		if (this._markers !== null) {
+			this._updateGuide();
+		}
 	},
 
 	_onMouseMove: function (e) {
-		var newPos = e.layerPoint,
-			latlng = e.latlng;
+		var newPos = this._map.mouseEventToLayerPoint(e.originalEvent);
+		var latlng = this._map.layerPointToLatLng(newPos);
 
 		// Save latlng
 		// should this be moved to _updateGuide() ?
@@ -222,6 +236,17 @@ L.Draw.Polyline = L.Draw.Feature.extend({
 		this._mouseMarker.setLatLng(latlng);
 
 		L.DomEvent.preventDefault(e.originalEvent);
+	},
+
+	_vertexChanged: function (latlng, added) {
+		this._map.fire('draw:drawvertex', { layers: this._markerGroup });
+		this._updateFinishHandler();
+
+		this._updateRunningMeasure(latlng, added);
+
+		this._clearGuides();
+
+		this._updateTooltip();
 	},
 
 	_onMouseDown: function (e) {
@@ -240,24 +265,26 @@ L.Draw.Polyline = L.Draw.Feature.extend({
 			}
 		}
 		this._mouseDownOrigin = null;
+		this._lastMouseUpTime = Date.now(); // #TODO get rid of this once leaflet fixes click/touch, see _onTouch()
 	},
 
 	_onTouch: function (e) {
 		// #TODO: use touchstart and touchend vs using click(touch start & end).
-		if (L.Browser.touch) { // #TODO: get rid of this once leaflet fixes their click/touch.
+		// #TODO: get rid of check for interval and touch browser once leaflet fixes their click/touch.
+		// prevent two vertices from being created if touch+mouse device (_onMouseUp would call twice)
+		var callInterval = 10;
+		var timeSinceLastMouseUp = this._lastMouseUpTime ?
+			Date.now() - this._lastMouseUpTime : Infinity;
+		if (L.Browser.touch && timeSinceLastMouseUp > callInterval) {
 			this._onMouseDown(e);
 			this._onMouseUp(e);
 		}
 	},
-	
-	_vertexChanged: function (latlng, added) {
-		this._updateFinishHandler();
 
-		this._updateRunningMeasure(latlng, added);
-
-		this._clearGuides();
-
-		this._updateTooltip();
+	_onMouseOut: function () {
+		if (this._tooltip) {
+			this._tooltip._onMouseOut.call(this._tooltip);
+		}
 	},
 
 	_updateFinishHandler: function () {
@@ -285,7 +312,7 @@ L.Draw.Polyline = L.Draw.Feature.extend({
 	},
 
 	_updateGuide: function (newPos) {
-		var markerCount = this._markers.length;
+		var markerCount = this._markers ? this._markers.length : 0;
 
 		if (markerCount > 0) {
 			newPos = newPos || this._map.latLngToLayerPoint(this._currentLatLng);
@@ -411,7 +438,7 @@ L.Draw.Polyline = L.Draw.Feature.extend({
 		// calculate the distance from the last fixed point to the mouse position
 		distance = this._measurementRunningTotal + currentLatLng.distanceTo(previousLatLng);
 
-		return L.GeometryUtil.readableDistance(distance, this.options.metric);
+		return L.GeometryUtil.readableDistance(distance, this.options.metric, this.options.feet);
 	},
 
 	_showErrorTooltip: function () {

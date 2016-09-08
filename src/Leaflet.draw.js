@@ -2,7 +2,7 @@
  * Leaflet.draw assumes that you have already included the Leaflet library.
  */
 
-L.drawVersion = '0.2.4-dev';
+L.drawVersion = '0.3.0-dev';
 
 L.drawLocal = {
 	draw: {
@@ -84,7 +84,7 @@ L.drawLocal = {
 				edit: 'Edit layers.',
 				editDisabled: 'No layers to edit.',
 				remove: 'Delete layers.',
-				removeDisabled: 'No layers to delete.',
+				removeDisabled: 'No layers to delete.'
 			}
 		},
 		handlers: {

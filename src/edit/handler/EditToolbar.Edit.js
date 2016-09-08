@@ -63,10 +63,17 @@ L.EditToolbar.Edit = L.Handler.extend({
 				subtext: L.drawLocal.edit.handlers.edit.tooltip.subtext
 			});
 
+			// Quickly access the tooltip to update for intersection checking
+			map._editTooltip = this._tooltip;
+
+			this._updateTooltip();
+
 			this._map
 				.on('mousemove', this._onMouseMove, this)
 				.on('touchmove', this._onMouseMove, this)
-				.on('click', this._editStyle, this);
+				.on('MSPointerMove', this._onMouseMove, this)
+				.on('click', this._editStyle, this)
+				.on('draw:editvertex', this._updateTooltip, this);
 		}
 	},
 
@@ -83,7 +90,10 @@ L.EditToolbar.Edit = L.Handler.extend({
 
 			this._map
 				.off('mousemove', this._onMouseMove, this)
-				.off('touchmove', this._onMouseMove, this);
+				.off('touchmove', this._onMouseMove, this)
+				.off('MSPointerMove', this._onMouseMove, this)
+				.off('click', this._editStyle, this)
+				.off('draw:editvertex', this._updateTooltip, this);
 		}
 	},
 
@@ -126,6 +136,17 @@ L.EditToolbar.Edit = L.Handler.extend({
 		}
 	},
 
+	_getTooltipText: function () {
+		return ({
+			text: L.drawLocal.edit.handlers.edit.tooltip.text,
+			subtext: L.drawLocal.edit.handlers.edit.tooltip.subtext
+		});
+	},
+
+	_updateTooltip: function () {
+		this._tooltip.updateContent(this._getTooltipText());
+	},
+
 	_revertLayer: function (layer) {
 		var id = L.Util.stamp(layer);
 		layer.edited = false;
@@ -146,10 +167,15 @@ L.EditToolbar.Edit = L.Handler.extend({
 
 	_enableLayerEdit: function (e) {
 		var layer = e.layer || e.target || e,
-			pathOptions;
+			pathOptions, poly;
 
 		// Back up this layer (if haven't before)
 		this._backupLayer(layer);
+
+		if (this.options.poly) {
+			poly = L.Util.extend({}, this.options.poly);
+			layer.options.poly = poly;
+		}
 
 		// Set different style for editing mode
 		if (this.options.selectedPathOptions) {
@@ -163,6 +189,7 @@ L.EditToolbar.Edit = L.Handler.extend({
 
 			layer.options.original = L.extend({}, layer.options);
 			layer.options.editing = pathOptions;
+
 		}
 
 		if (this.isMarker) {
@@ -171,7 +198,9 @@ L.EditToolbar.Edit = L.Handler.extend({
 				.on('dragend', this._onMarkerDragEnd)
 				// #TODO: remove when leaflet finally fixes their draggable so it's touch friendly again.
 				.on('touchmove', this._onTouchMove, this)
-				.on('touchend', this._onMarkerDragEnd, this);
+				.on('MSPointerMove', this._onTouchMove, this)
+				.on('touchend', this._onMarkerDragEnd, this)
+				.on('MSPointerUp', this._onMarkerDragEnd, this);
 		} else {
 			layer.editing.enable();
 		}
@@ -202,7 +231,9 @@ L.EditToolbar.Edit = L.Handler.extend({
 			layer
 				.off('dragend', this._onMarkerDragEnd, this)
 				.off('touchmove', this._onTouchMove, this)
-				.off('touchend', this._onMarkerDragEnd, this);
+				.off('MSPointerMove', this._onTouchMove, this)
+				.off('touchend', this._onMarkerDragEnd, this)
+				.off('MSPointerUp', this._onMarkerDragEnd, this);
 		} else {
 			layer.editing.disable();
 		}
